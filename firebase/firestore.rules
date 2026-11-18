@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users collection: user can only read/write their own profile
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Crop recommendations: user can only read/write their own
+    match /crop_recommendations/{recId} {
+      allow read, write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+    }
+
+    // Storage records: user can only read/write their own
+    match /storage_records/{recordId} {
+      allow read, write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+    }
+
+    // Bookmarked/Saved items: user can only read/write their own
+    match /saved_items/{savedId} {
+      allow read, write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+    }
+
+    // Notifications: user can only read/update their own
+    match /notifications/{notifId} {
+      allow read, update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
+    }
+
+    // Notification preferences: user can only read/write their own
+    match /notification_preferences/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Public weather cache & alerts (read-only for all authenticated or public)
+    match /weather_data/{document} {
+      allow read: if true;
+      allow write: if false; // Only backend admin SDK writes
+    }
+
+    match /weather_alerts/{document} {
+      allow read: if true;
+      allow write: if false; // Only backend admin SDK writes
+    }
+  }
+}

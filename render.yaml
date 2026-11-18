@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: kissan-guide-backend
+    env: python
+    region: singapore # Closest region to India/Karnataka
+    plan: starter
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.5
+      - key: ENVIRONMENT
+        value: production
+      - key: PROJECT_NAME
+        value: "KISSAN GUIDE"
+      - key: WEATHER_PROVIDER
+        value: open-meteo
+      - key: WEATHER_API_BASE_URL
+        value: https://api.open-meteo.com/v1
+      - key: AI_PROVIDER
+        value: gemini
+      - key: AI_MODEL
+        value: gemini-1.5-flash
+      - key: AI_API_KEY
+        sync: false
+      - key: FIREBASE_CREDENTIALS_PATH
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"
