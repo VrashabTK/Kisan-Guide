@@ -43,11 +43,47 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
 }
 
 export const api = {
-  // User Profile
+  // Authentication
+  authSignup: (payload: {
+    identifier: string;
+    password: string;
+    confirm_password?: string;
+    full_name?: string;
+    taluk?: string;
+  }) => fetchWithAuth('/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
+  authLogin: (payload: { identifier: string; password: string }) =>
+    fetchWithAuth('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  authForgotPassword: (identifier: string) =>
+    fetchWithAuth('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ identifier }),
+    }),
+  authResetPassword: (payload: {
+    token: string;
+    new_password: string;
+    confirm_new_password?: string;
+  }) => fetchWithAuth('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
+  authLogout: () => fetchWithAuth('/auth/logout', { method: 'POST' }),
+
+  // User Profile & Global Crop Preference
   getMyProfile: () => fetchWithAuth('/users/me'),
   updateMyProfile: (data: any) => fetchWithAuth('/users/me', {
     method: 'PUT',
     body: JSON.stringify(data),
+  }),
+  getCropPreference: () => fetchWithAuth('/users/me/crop-preference'),
+  updateCropPreference: (crop: string) => fetchWithAuth('/users/me/crop-preference', {
+    method: 'PUT',
+    body: JSON.stringify({ crop }),
   }),
   deleteMyAccount: () => fetchWithAuth('/users/me', {
     method: 'DELETE',

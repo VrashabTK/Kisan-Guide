@@ -3,171 +3,214 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Sprout,
-  Phone,
   Mail,
   Lock,
-  User,
-  MapPin,
   ArrowRight,
-  ShieldCheck,
   Languages,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  KeyRound,
+  ShieldCheck,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { ConfirmationResult } from '../../services/firebase';
 
 export const LoginPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const {
+    loginWithIdentifier,
+    signupWithIdentifier,
+    requestPasswordReset,
+    confirmPasswordReset,
     loginWithGoogle,
-    loginWithEmail,
-    signupWithEmail,
-    sendPhoneOtp,
-    verifyPhoneOtp,
-    resetPassword,
     quickDemoLogin,
   } = useAuth();
   const { language, toggleLanguage } = useLanguage();
 
-  const [authMethod, setAuthMethod] = useState<'phone' | 'email' | 'signup'>('phone');
-  
-  // Phone OTP state
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [otpSent, setOtpSent] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
+  // Mode: 'login' | 'signup'
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
-  // Email state
-  const [email, setEmail] = useState('');
+  // Shared form inputs
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [taluk, setTaluk] = useState('Mangaluru');
-  const [agreeTerms, setAgreeTerms] = useState(false);
 
   // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
+
+  // Forgot password modal state
   const [showForgotModal, setShowForgotModal] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotIdentifier, setForgotIdentifier] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [forgotSuccess, setForgotSuccess] = useState<string | null>(null);
 
-  const taluks = [
-    'Mangaluru', 'Bantwal', 'Belthangady', 'Puttur',
-    'Sullia', 'Moodbidri', 'Kadaba', 'Mulki', 'Ullal'
-  ];
+  // Validation Helper
+  const validateIdentifier = (value: string): boolean => {
+    const raw = (value || '').trim();
+    if (!raw) return false;
+    if (raw.includes('@')) {
+      const emailRegex = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
+      return emailRegex.test(raw);
+    } else {
+      const digits = raw.replace(/\D/g, '');
+      const clean = (digits.startsWith('91') && digits.length === 12) ? digits.slice(2) : digits;
+      return clean.length === 10 && ['6', '7', '8', '9'].includes(clean[0]);
+    }
+  };
 
-  // Phone Login Submit
-  const handleSendOtp = async (e: React.FormEvent) => {
+  // Submit Handler: Sign Up
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!phone || phone.replace(/\D/g, '').length < 10) {
-      setError(t('auth.errors.invalidPhone'));
+    setSuccessNotice(null);
+
+    const cleanId = identifier.trim();
+    if (!cleanId || !password || !confirmPassword) {
+      setError(t('auth.emptyFields'));
       return;
     }
+
+    if (!validateIdentifier(cleanId)) {
+      setError(t('auth.errors.invalidPhone') + ' ' + t('common.or', 'or') + ' ' + t('auth.errors.invalidEmail'));
+      return;
+    }
+
+    if (password.length < 6) {
+      setError(t('auth.errors.passwordShort'));
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError(t('auth.errors.passwordMismatch'));
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await sendPhoneOtp(phone, 'recaptcha-container');
-      if (res) {
-        setConfirmationResult(res);
-        setOtpSent(true);
-        setCooldown(60);
-        const timer = setInterval(() => {
-          setCooldown((prev) => {
-            if (prev <= 1) {
-              clearInterval(timer);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+      await signupWithIdentifier(cleanId, password, confirmPassword);
+      navigate('/');
+    } catch (err: any) {
+      const msg = err.message || '';
+      if (msg.includes('already exists') || err.status === 409) {
+        setError(t('auth.accountExists'));
+      } else {
+        setError(msg || t('auth.accountExists'));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Submit Handler: Login
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessNotice(null);
+
+    const cleanId = identifier.trim();
+    if (!cleanId || !password) {
+      setError(t('auth.emptyFields'));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await loginWithIdentifier(cleanId, password);
+      navigate('/');
+    } catch (err: any) {
+      const msg = err.message || '';
+      if (msg.includes('too many failed') || err.status === 429) {
+        setError(msg);
+      } else {
+        // Enforce generic message that does not reveal account existence
+        setError(t('auth.invalidCredentials'));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Forgot Password: Step 1 (Request Reset Token)
+  const handleRequestReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError(null);
+    setForgotSuccess(null);
+
+    const cleanId = forgotIdentifier.trim();
+    if (!cleanId) {
+      setForgotError(t('auth.emptyFields'));
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const res = await requestPasswordReset(cleanId);
+      if (res?.token) {
+        setResetToken(res.token);
+        setForgotStep(2);
+        setForgotSuccess("Verification token issued! Please create your new password.");
+      } else {
+        setForgotError("Unable to process reset. Please verify your details.");
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to send OTP.');
+      setForgotError(err.message || "No account found with this email address or mobile number.");
     } finally {
-      setLoading(false);
+      setForgotLoading(false);
     }
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
+  // Forgot Password: Step 2 (Confirm New Password)
+  const handleConfirmReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!confirmationResult || !otp) return;
-    setLoading(true);
-    setError(null);
-    try {
-      await verifyPhoneOtp(confirmationResult, otp, fullName, taluk);
-      navigate('/');
-    } catch (err: any) {
-      setError(t('auth.errors.otpInvalid'));
-    } finally {
-      setLoading(false);
+    setForgotError(null);
+    setForgotSuccess(null);
+
+    if (!resetToken || !newPassword || !confirmNewPassword) {
+      setForgotError(t('auth.emptyFields'));
+      return;
     }
-  };
 
-  // Email Login
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!email) return setError(t('auth.errors.invalidEmail'));
-    if (!password) return setError(t('auth.errors.passwordShort'));
-    setLoading(true);
-    try {
-      await loginWithEmail(email, password);
-      navigate('/');
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in.');
-    } finally {
-      setLoading(false);
+    if (newPassword.length < 6) {
+      setForgotError(t('auth.errors.passwordShort'));
+      return;
     }
-  };
 
-  // Email Signup
-  const handleEmailSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!fullName) return setError(t('auth.errors.nameRequired'));
-    if (!email) return setError(t('auth.errors.invalidEmail'));
-    if (password.length < 6) return setError(t('auth.errors.passwordShort'));
-    if (password !== confirmPassword) return setError(t('auth.errors.passwordMismatch'));
-    if (!agreeTerms) return setError(t('auth.errors.termsRequired'));
-
-    setLoading(true);
-    try {
-      await signupWithEmail(email, password, fullName, taluk, phone);
-      navigate('/');
-    } catch (err: any) {
-      setError(err.message || 'Failed to create account.');
-    } finally {
-      setLoading(false);
+    if (newPassword !== confirmNewPassword) {
+      setForgotError(t('auth.errors.passwordMismatch'));
+      return;
     }
-  };
 
-  const handleGoogleLogin = async () => {
-    setError(null);
-    setLoading(true);
+    setForgotLoading(true);
     try {
-      await loginWithGoogle();
-      navigate('/');
+      const res = await confirmPasswordReset(resetToken, newPassword, confirmNewPassword);
+      if (res?.success) {
+        setForgotSuccess(t('auth.resetSuccess'));
+        setTimeout(() => {
+          setShowForgotModal(false);
+          setForgotStep(1);
+          setForgotIdentifier('');
+          setResetToken('');
+          setNewPassword('');
+          setConfirmNewPassword('');
+          setAuthMode('login');
+          setSuccessNotice(t('auth.resetSuccess'));
+        }, 1500);
+      } else {
+        setForgotError("Password reset failed. Invalid or expired token.");
+      }
     } catch (err: any) {
-      setError(err.message || 'Google sign in canceled or failed.');
+      setForgotError(err.message || "Failed to reset password. Please check your token.");
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!forgotEmail) return;
-    try {
-      await resetPassword(forgotEmail);
-      setMessage(`Password reset email dispatched to ${forgotEmail}`);
-      setShowForgotModal(false);
-    } catch (err: any) {
-      setError(err.message);
+      setForgotLoading(false);
     }
   };
 
@@ -176,22 +219,31 @@ export const LoginPage: React.FC = () => {
     navigate('/');
   };
 
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      await loginWithGoogle();
+      navigate('/');
+    } catch (err: any) {
+      setError(err.message || 'Google sign-in canceled or failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-cream font-sans">
       
-      {/* Invisible container for Firebase phone verification */}
-      <div id="recaptcha-container"></div>
-
       {/* Left Column: Visual & Agricultural Branding */}
       <div className="lg:w-1/2 bg-gradient-to-br from-forest-dark via-forest to-leaf text-white p-8 lg:p-12 flex flex-col justify-between relative overflow-hidden">
-        {/* Subtle background plant art */}
         <div className="absolute -bottom-16 -right-16 w-96 h-96 rounded-full bg-white/5 pointer-events-none blur-2xl" />
         <div className="absolute top-1/4 -left-20 w-64 h-64 rounded-full bg-leaf/20 pointer-events-none blur-3xl" />
 
         {/* Top Header */}
         <div className="flex items-center justify-between z-10">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center shadow-inner">
               <Sprout className="w-7 h-7 text-cream" />
             </div>
             <div>
@@ -207,7 +259,7 @@ export const LoginPage: React.FC = () => {
           {/* Language Switch Button */}
           <button
             onClick={toggleLanguage}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur border border-white/20 text-xs font-semibold text-white transition-colors"
+            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur border border-white/20 text-xs font-semibold text-white transition-colors"
           >
             <Languages className="w-3.5 h-3.5" />
             <span>{language === 'en' ? 'ಕನ್ನಡಕ್ಕೆ ಬದಲಾಯಿಸಿ' : 'Switch to English'}</span>
@@ -229,19 +281,19 @@ export const LoginPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-3 pt-4 text-xs">
             <div className="flex items-center space-x-2 bg-white/10 backdrop-blur p-2.5 rounded-xl border border-white/10">
               <CheckCircle2 className="w-4 h-4 text-leaf-light shrink-0" />
-              <span>Real-Time Weather Advisories</span>
-            </div>
-            <div className="flex items-center space-x-2 bg-white/10 backdrop-blur p-2.5 rounded-xl border border-white/10">
-              <CheckCircle2 className="w-4 h-4 text-leaf-light shrink-0" />
               <span>Dakshina Kannada Agro-Rules</span>
             </div>
             <div className="flex items-center space-x-2 bg-white/10 backdrop-blur p-2.5 rounded-xl border border-white/10">
               <CheckCircle2 className="w-4 h-4 text-leaf-light shrink-0" />
-              <span>Safe Storage Duration AI</span>
+              <span>Real-Time Weather Advisories</span>
             </div>
             <div className="flex items-center space-x-2 bg-white/10 backdrop-blur p-2.5 rounded-xl border border-white/10">
               <CheckCircle2 className="w-4 h-4 text-leaf-light shrink-0" />
-              <span>Bilingual English & Kannada</span>
+              <span>Post-Harvest Storage Science</span>
+            </div>
+            <div className="flex items-center space-x-2 bg-white/10 backdrop-blur p-2.5 rounded-xl border border-white/10">
+              <CheckCircle2 className="w-4 h-4 text-leaf-light shrink-0" />
+              <span>Global Shared Crop Selection</span>
             </div>
           </div>
         </div>
@@ -252,379 +304,288 @@ export const LoginPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Right Column: Authentication Card Forms */}
+      {/* Right Column: Authentication Card */}
       <div className="lg:w-1/2 flex items-center justify-center p-6 sm:p-10 lg:p-12">
         <div className="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-forest/5 border border-cream-dark p-6 sm:p-8">
           
-          {/* Method Selector Tabs */}
-          <div className="flex bg-cream p-1 rounded-2xl mb-6">
+          {/* Top Tabs: Login vs Sign Up */}
+          <div className="flex bg-cream p-1.5 rounded-2xl mb-6 border border-cream-dark">
             <button
-              onClick={() => { setAuthMethod('phone'); setError(null); }}
-              className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
-                authMethod === 'phone'
-                  ? 'bg-white text-forest shadow-sm'
-                  : 'text-gray-500 hover:text-forest'
+              type="button"
+              onClick={() => {
+                setAuthMode('login');
+                setError(null);
+                setSuccessNotice(null);
+              }}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-extrabold transition-all ${
+                authMode === 'login'
+                  ? 'bg-forest text-white shadow-md'
+                  : 'text-gray-600 hover:text-forest'
               }`}
             >
-              {t('auth.mobileLogin')}
+              {t('auth.loginBtn')}
             </button>
             <button
-              onClick={() => { setAuthMethod('email'); setError(null); }}
-              className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
-                authMethod === 'email'
-                  ? 'bg-white text-forest shadow-sm'
-                  : 'text-gray-500 hover:text-forest'
+              type="button"
+              onClick={() => {
+                setAuthMode('signup');
+                setError(null);
+                setSuccessNotice(null);
+              }}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-extrabold transition-all ${
+                authMode === 'signup'
+                  ? 'bg-forest text-white shadow-md'
+                  : 'text-gray-600 hover:text-forest'
               }`}
             >
-              {t('auth.emailLogin')}
-            </button>
-            <button
-              onClick={() => { setAuthMethod('signup'); setError(null); }}
-              className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
-                authMethod === 'signup'
-                  ? 'bg-white text-forest shadow-sm'
-                  : 'text-gray-500 hover:text-forest'
-              }`}
-            >
-              {t('auth.signup')}
+              {t('auth.signUpBtn')}
             </button>
           </div>
 
-          {/* Feedback messages */}
+          {/* Status Banners */}
           {error && (
-            <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="mb-5 p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start space-x-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
               <span>{error}</span>
             </div>
           )}
-          {message && (
-            <div className="mb-4 p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-xs flex items-center space-x-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>{message}</span>
+
+          {successNotice && (
+            <div className="mb-5 p-3.5 rounded-2xl bg-green-50 border border-green-200 text-green-700 text-xs flex items-start space-x-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-green-600" />
+              <span>{successNotice}</span>
             </div>
           )}
 
-          {/* 1. Mobile Phone Login Form */}
-          {authMethod === 'phone' && (
-            <div>
-              {!otpSent ? (
-                <form onSubmit={handleSendOtp} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      {t('auth.phoneNumber')}
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                        <Phone className="w-4 h-4" />
-                        <span className="ml-1 text-xs font-bold text-gray-500">+91</span>
-                      </div>
-                      <input
-                        type="tel"
-                        maxLength={10}
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                        placeholder={t('auth.phoneNumberPlaceholder')}
-                        className="w-full pl-16 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-gray-400">
-                    {t('auth.recaptchaNotice')}
-                  </p>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-2.5 rounded-xl bg-forest hover:bg-forest-light text-white text-sm font-semibold transition-colors flex items-center justify-center space-x-2 shadow-md shadow-forest/20 disabled:opacity-60"
-                  >
-                    <span>{loading ? t('common.loading') : t('auth.sendOtp')}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleVerifyOtp} className="space-y-4">
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-xs font-semibold text-gray-700">
-                        {t('auth.enterOtp')}
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setOtpSent(false)}
-                        className="text-[11px] text-forest underline font-medium"
-                      >
-                        Change Number
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                      placeholder="6-digit code"
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-300 text-center tracking-widest text-lg font-bold focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest"
-                      required
-                      autoFocus
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>
-                      {cooldown > 0 ? (
-                        t('auth.cooldown', { seconds: cooldown })
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={handleSendOtp}
-                          className="text-forest underline font-semibold"
-                        >
-                          {t('auth.resendOtp')}
-                        </button>
-                      )}
-                    </span>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading || otp.length < 6}
-                    className="w-full py-2.5 rounded-xl bg-forest hover:bg-forest-light text-white text-sm font-semibold transition-colors flex items-center justify-center space-x-2 shadow-md shadow-forest/20 disabled:opacity-60"
-                  >
-                    <span>{loading ? t('common.loading') : t('auth.verifyOtp')}</span>
-                    <ShieldCheck className="w-4 h-4" />
-                  </button>
-                </form>
-              )}
-            </div>
-          )}
-
-          {/* 2. Email Login Form */}
-          {authMethod === 'email' && (
-            <form onSubmit={handleEmailLogin} className="space-y-4">
+          {/* Form: LOGIN */}
+          {authMode === 'login' && (
+            <form onSubmit={handleLogin} className="space-y-4">
+              
+              {/* Field 1: Email OR Mobile */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  {t('auth.email')}
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  {t('auth.identifierLabel')}
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
                     <Mail className="w-4 h-4" />
                   </div>
                   <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="farmer@dakshina.in"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest"
+                    type="text"
                     required
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    placeholder={t('auth.identifierPlaceholder')}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest transition-colors font-medium"
                   />
                 </div>
               </div>
 
+              {/* Field 2: Password */}
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="block text-xs font-semibold text-gray-700">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-gray-700">
                     {t('auth.password')}
                   </label>
                   <button
                     type="button"
-                    onClick={() => setShowForgotModal(true)}
-                    className="text-[11px] text-forest hover:underline font-medium"
+                    onClick={() => {
+                      setShowForgotModal(true);
+                      setForgotIdentifier(identifier);
+                      setForgotError(null);
+                      setForgotSuccess(null);
+                      setForgotStep(1);
+                    }}
+                    className="text-xs font-semibold text-forest hover:text-forest-dark"
                   >
                     {t('auth.forgotPassword')}
                   </button>
                 </div>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
                     <Lock className="w-4 h-4" />
                   </div>
                   <input
                     type="password"
+                    required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest"
-                    required
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest transition-colors font-medium"
                   />
                 </div>
               </div>
 
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 rounded-xl bg-forest hover:bg-forest-light text-white text-sm font-semibold transition-colors flex items-center justify-center space-x-2 shadow-md shadow-forest/20 disabled:opacity-60"
+                className="w-full py-3 rounded-xl bg-forest hover:bg-forest-light text-white font-bold text-sm transition-all shadow-md shadow-forest/20 flex items-center justify-center space-x-2 disabled:opacity-60 mt-2"
               >
-                <span>{loading ? t('common.loading') : t('auth.login')}</span>
+                <span>{loading ? t('common.submitting') : t('auth.loginBtn')}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
+
+              {/* Switch to Sign Up Link */}
+              <div className="text-center pt-2">
+                <p className="text-xs text-gray-500">
+                  {t('auth.noAccount')}{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('signup');
+                      setError(null);
+                    }}
+                    className="font-bold text-forest hover:underline"
+                  >
+                    {t('auth.signUpBtn')}
+                  </button>
+                </p>
+              </div>
+
             </form>
           )}
 
-          {/* 3. Signup Form */}
-          {authMethod === 'signup' && (
-            <form onSubmit={handleEmailSignup} className="space-y-3">
+          {/* Form: SIGN UP */}
+          {authMode === 'signup' && (
+            <form onSubmit={handleSignUp} className="space-y-4">
+              
+              {/* Field 1: Email OR Mobile */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  {t('auth.fullName')}
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  {t('auth.identifierLabel')} *
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Ramesh Gowda"
-                    className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  {t('auth.taluk')}
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                    <MapPin className="w-4 h-4" />
-                  </div>
-                  <select
-                    value={taluk}
-                    onChange={(e) => setTaluk(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest"
-                  >
-                    {taluks.map((tlk) => (
-                      <option key={tlk} value={tlk}>
-                        {t(`taluks.${tlk}`)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  {t('auth.email')}
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
                     <Mail className="w-4 h-4" />
                   </div>
                   <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="farmer@dakshina.in"
-                    className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest"
+                    type="text"
                     required
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    placeholder={t('auth.identifierPlaceholder')}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest transition-colors font-medium"
                   />
                 </div>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Enter your email address or 10-digit Indian mobile number.
+                </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    {t('auth.password')}
-                  </label>
+              {/* Field 2: Create Password */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  {t('auth.createPassword')} *
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                    <Lock className="w-4 h-4" />
+                  </div>
                   <input
                     type="password"
+                    required
+                    minLength={6}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest"
-                    required
+                    placeholder="At least 6 characters"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest transition-colors font-medium"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    {t('auth.confirmPassword')}
-                  </label>
+              </div>
+
+              {/* Field 3: Confirm Password */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  {t('auth.confirmPassword')} *
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                    <Lock className="w-4 h-4" />
+                  </div>
                   <input
                     type="password"
+                    required
+                    minLength={6}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest"
-                    required
+                    placeholder="Repeat password"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest transition-colors font-medium"
                   />
                 </div>
               </div>
 
-              <div className="flex items-start space-x-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="terms"
-                  checked={agreeTerms}
-                  onChange={(e) => setAgreeTerms(e.target.checked)}
-                  className="mt-1 rounded text-forest focus:ring-forest"
-                  required
-                />
-                <label htmlFor="terms" className="text-[11px] text-gray-600 leading-tight">
-                  {t('auth.agreeTerms')}
-                </label>
-              </div>
-
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 rounded-xl bg-forest hover:bg-forest-light text-white text-sm font-semibold transition-colors flex items-center justify-center space-x-2 shadow-md shadow-forest/20 disabled:opacity-60 mt-2"
+                className="w-full py-3 rounded-xl bg-forest hover:bg-forest-light text-white font-bold text-sm transition-all shadow-md shadow-forest/20 flex items-center justify-center space-x-2 disabled:opacity-60 mt-2"
               >
-                <span>{loading ? t('common.loading') : t('auth.signup')}</span>
+                <span>{loading ? t('common.submitting') : t('auth.signUpBtn')}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
+
+              {/* Switch to Login Link */}
+              <div className="text-center pt-2">
+                <p className="text-xs text-gray-500">
+                  {t('auth.haveAccount')}{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('login');
+                      setError(null);
+                    }}
+                    className="font-bold text-forest hover:underline"
+                  >
+                    {t('auth.loginBtn')}
+                  </button>
+                </p>
+              </div>
+
             </form>
           )}
 
-          {/* Social / Google & Demo Dividers */}
-          <div className="relative my-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-400 font-semibold">{t('auth.or')}</span>
-            </div>
-          </div>
-
-          {/* Google Login Button */}
-          <button
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            className="w-full py-2.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center space-x-2 shadow-sm disabled:opacity-60"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.15z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-              />
-            </svg>
-            <span>{t('auth.googleLogin')}</span>
-          </button>
-
-          {/* Instant Quick Demo Login Button */}
-          <div className="mt-4 pt-4 border-t border-cream-dark text-center">
+          {/* Social and Demo Authentication Options */}
+          <div className="mt-6 pt-5 border-t border-gray-100 space-y-3">
+            
+            {/* Google OAuth Button */}
             <button
-              onClick={handleDemoSignIn}
-              className="w-full py-2 rounded-xl bg-cream hover:bg-cream-dark text-forest text-xs font-bold transition-colors border border-forest/15"
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full py-2.5 rounded-xl border border-gray-300 hover:border-gray-400 text-gray-700 text-xs font-bold transition-all flex items-center justify-center space-x-2 bg-white shadow-sm"
             >
-              {t('auth.demoLogin')}
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+              <span>{t('auth.googleLogin')}</span>
             </button>
-            <p className="text-[10px] text-gray-400 mt-1">
-              One-click access with simulated Dakshina Kannada farmer credentials.
-            </p>
+
+            {/* Quick Demo Login Button */}
+            <button
+              type="button"
+              onClick={handleDemoSignIn}
+              className="w-full py-2.5 rounded-xl bg-leaf/10 hover:bg-leaf/20 text-forest text-xs font-bold transition-all flex items-center justify-center space-x-2 border border-leaf/30"
+            >
+              <UserCheck className="w-4 h-4 text-forest" />
+              <span>{t('auth.demoLogin')}</span>
+            </button>
+
           </div>
 
         </div>
@@ -632,39 +593,132 @@ export const LoginPage: React.FC = () => {
 
       {/* Forgot Password Modal */}
       {showForgotModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
-            <h3 className="font-bold text-gray-900 text-lg">
-              {t('auth.resetPassword')}
-            </h3>
-            <p className="text-xs text-gray-600">
-              Enter your registered email address to receive password reset instructions.
-            </p>
-            <form onSubmit={handleForgotPassword} className="space-y-3">
-              <input
-                type="email"
-                value={forgotEmail}
-                onChange={(e) => setForgotEmail(e.target.value)}
-                placeholder="farmer@dakshina.in"
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-forest"
-                required
-              />
-              <div className="flex space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setShowForgotModal(false)}
-                  className="flex-1 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2 rounded-xl bg-forest hover:bg-forest-light text-white text-xs font-semibold"
-                >
-                  {t('auth.sendResetLink')}
-                </button>
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-cream-dark">
+            
+            <div className="flex items-center space-x-2.5">
+              <div className="p-2.5 rounded-2xl bg-forest/10 text-forest">
+                <KeyRound className="w-5 h-5" />
               </div>
-            </form>
+              <div>
+                <h3 className="font-extrabold text-base text-gray-900">
+                  {t('auth.resetPassword')}
+                </h3>
+                <p className="text-xs text-gray-500">
+                  {forgotStep === 1
+                    ? 'Enter registered email or mobile'
+                    : 'Set new account password'}
+                </p>
+              </div>
+            </div>
+
+            {forgotError && (
+              <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs flex items-center space-x-1.5">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{forgotError}</span>
+              </div>
+            )}
+
+            {forgotSuccess && (
+              <div className="p-3 rounded-xl bg-green-50 text-green-700 text-xs flex items-center space-x-1.5">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{forgotSuccess}</span>
+              </div>
+            )}
+
+            {forgotStep === 1 ? (
+              <form onSubmit={handleRequestReset} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    {t('auth.identifierLabel')}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={forgotIdentifier}
+                    onChange={(e) => setForgotIdentifier(e.target.value)}
+                    placeholder="e.g. farmer@dakshina.in or 9845012345"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-forest/30"
+                  />
+                </div>
+                <div className="flex items-center justify-end space-x-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-forest text-white hover:bg-forest-light disabled:opacity-50"
+                  >
+                    {forgotLoading ? t('common.submitting') : 'Verify Account'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleConfirmReset} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    {t('auth.resetTokenLabel')}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={resetToken}
+                    onChange={(e) => setResetToken(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-xs font-mono bg-gray-50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    {t('auth.newPasswordLabel')}
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min 6 characters"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    {t('auth.confirmPassword')}
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder="Repeat new password"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-sm"
+                  />
+                </div>
+                <div className="flex items-center justify-end space-x-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-forest text-white hover:bg-forest-light disabled:opacity-50"
+                  >
+                    {forgotLoading ? t('common.submitting') : 'Save New Password'}
+                  </button>
+                </div>
+              </form>
+            )}
+
           </div>
         </div>
       )}

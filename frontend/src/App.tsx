@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { CropProvider } from './contexts/CropContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -33,8 +34,9 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 export const App: React.FC = () => {
   return (
     <AuthProvider>
-      <LanguageProvider>
-        <NotificationProvider>
+      <CropProvider>
+        <LanguageProvider>
+          <NotificationProvider>
           <Router>
             <Routes>
               {/* Public Authentication Route */}
@@ -113,7 +115,8 @@ export const App: React.FC = () => {
           </Router>
         </NotificationProvider>
       </LanguageProvider>
-    </AuthProvider>
+    </CropProvider>
+  </AuthProvider>
   );
 };
 

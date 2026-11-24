@@ -5,7 +5,8 @@
 [![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind_CSS_3.4-38B2AC.svg?logo=tailwind-css)](https://tailwindcss.com)
 [![Vite](https://img.shields.io/badge/Bundler-Vite_5-646CFF.svg?logo=vite)](https://vitejs.dev)
 [![Firebase](https://img.shields.io/badge/Auth_%26_DB-Firebase_Firestore-FFCA28.svg?logo=firebase)](https://firebase.google.com)
-[![Tests](https://img.shields.io/badge/Tests-14%20Passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Backend%20Tests-19%20Passing-brightgreen.svg)]()
+[![Validation Tests](https://img.shields.io/badge/Frontend%20Validation-15%20Passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)]()
 
 > **KISSAN GUIDE** is an agricultural assistance web application designed specifically for farmers in **Dakshina Kannada (DK), Karnataka, India**.
@@ -163,7 +164,26 @@ KISSAN_GUIDE/
 
 ---
 
-## ⚡ Quick Start
+## ⚡ One-Click Startup (Recommended)
+
+To start the entire application without opening separate terminal windows:
+
+👉 **Simply double-click `RUN.bat` directly in the `KISSAN_GUIDE` root folder.**
+
+`RUN.bat` automatically:
+1. Detects Python (3.10+) and Node.js (18+)/npm.
+2. Checks port availability (ports 8000 and 5173).
+3. Creates and activates the Python virtual environment (`.\venv`).
+4. Installs backend dependencies (`pip install -r backend\requirements.txt`).
+5. Installs frontend dependencies (`npm install` inside `frontend\`).
+6. Starts the **FastAPI Backend** with `--reload` in its own persistent terminal window.
+7. Starts the **React/Vite Frontend** with Hot Module Replacement (HMR) in its own terminal window.
+8. Automatically waits for the frontend server to become responsive.
+9. Automatically opens your default web browser to [http://localhost:5173](http://localhost:5173).
+
+---
+
+## 🛠️ Manual Terminal Startup
 
 ### 1. Backend
 ```bash

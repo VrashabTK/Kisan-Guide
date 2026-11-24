@@ -15,19 +15,21 @@ import {
   Calendar,
   Sparkles,
   ShieldAlert,
-  Clock
+  Clock,
+  Sprout
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useCrop, SupportedCrop } from '../../contexts/CropContext';
 import { api } from '../../services/api';
 
 export const WeatherAssistantPage: React.FC = () => {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const { language } = useLanguage();
+  const { selectedCrop, setSelectedCrop } = useCrop();
 
   const [taluk, setTaluk] = useState(profile?.taluk || 'Mangaluru');
-  const [selectedCropFilter, setSelectedCropFilter] = useState('All');
   const [weatherData, setWeatherData] = useState<any>(null);
   const [advisories, setAdvisories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,9 +40,10 @@ export const WeatherAssistantPage: React.FC = () => {
     'Sullia', 'Moodbidri', 'Kadaba', 'Mulki', 'Ullal'
   ];
 
-  const crops = ['All', 'Coconut', 'Rice', 'Arecanut', 'Cocoa'];
+  // Strictly 4 supported crops only
+  const crops: SupportedCrop[] = ['Coconut', 'Rice', 'Arecanut', 'Cocoa'];
 
-  const fetchWeatherAndAdvisories = async (selectedTaluk: string) => {
+  const fetchWeatherAndAdvisories = async (selectedTaluk: string, activeCrop: string) => {
     setLoading(true);
     try {
       const forecast = await api.getWeatherForecast(selectedTaluk);
@@ -48,7 +51,7 @@ export const WeatherAssistantPage: React.FC = () => {
 
       const adv = await api.getWeatherAdvisory({
         taluk: selectedTaluk,
-        crop: selectedCropFilter,
+        crop: activeCrop,
       });
       setAdvisories(adv?.advisories || []);
     } catch (err) {
@@ -59,8 +62,18 @@ export const WeatherAssistantPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchWeatherAndAdvisories(taluk);
-  }, [taluk, selectedCropFilter]);
+    fetchWeatherAndAdvisories(taluk, selectedCrop);
+  }, [taluk, selectedCrop]);
+
+  const handleCropChange = async (newCrop: string) => {
+    await setSelectedCrop(newCrop, true);
+    const cropName = language === 'kn' ? t(`crops.${newCrop}`) : newCrop;
+    const msg = language === 'kn'
+      ? `${cropName} ಅನ್ನು ಎಲ್ಲಾ ವಿಭಾಗಗಳಲ್ಲಿ ಸಕ್ರಿಯ ಬೆಳೆಯಾಗಿ ನವೀಕರಿಸಲಾಗಿದೆ.`
+      : `${newCrop} selected as default crop across Weather & Storage assistants.`;
+    setSavedNotice(msg);
+    setTimeout(() => setSavedNotice(null), 3500);
+  };
 
   const handleBookmarkAdvisory = async (adv: any) => {
     try {
@@ -101,8 +114,27 @@ export const WeatherAssistantPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Taluk Control Pill */}
-        <div className="flex items-center space-x-2 shrink-0">
+        {/* Taluk & Global Crop Controls */}
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          
+          {/* Global Shared Crop Dropdown */}
+          <div className="relative">
+            <select
+              value={selectedCrop}
+              onChange={(e) => handleCropChange(e.target.value)}
+              className="pl-8 pr-4 py-2 rounded-xl border-2 border-forest/30 text-xs sm:text-sm bg-white font-bold text-forest-dark shadow-sm focus:outline-none focus:ring-2 focus:ring-forest"
+              title="Global Selected Crop"
+            >
+              {crops.map((c) => (
+                <option key={c} value={c}>
+                  {t(`crops.${c}`)} ({c})
+                </option>
+              ))}
+            </select>
+            <Sprout className="w-4 h-4 text-forest absolute left-2.5 top-2.5 pointer-events-none" />
+          </div>
+
+          {/* Taluk Control Pill */}
           <div className="relative">
             <select
               value={taluk}
@@ -119,7 +151,7 @@ export const WeatherAssistantPage: React.FC = () => {
           </div>
 
           <button
-            onClick={() => fetchWeatherAndAdvisories(taluk)}
+            onClick={() => fetchWeatherAndAdvisories(taluk, selectedCrop)}
             disabled={loading}
             className="p-2 rounded-xl bg-forest hover:bg-forest-light text-white transition-colors shadow-sm disabled:opacity-50"
             title={t('weather.getRecommendations')}
@@ -360,19 +392,19 @@ export const WeatherAssistantPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Filter Pills */}
+          {/* Crop Switcher Pills */}
           <div className="flex items-center space-x-1.5 overflow-x-auto pb-1">
             {crops.map((c) => (
               <button
                 key={c}
-                onClick={() => setSelectedCropFilter(c)}
+                onClick={() => handleCropChange(c)}
                 className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  selectedCropFilter === c
+                  selectedCrop === c
                     ? 'bg-forest text-white shadow'
                     : 'bg-cream text-gray-600 hover:bg-cream-dark'
                 }`}
               >
-                {c === 'All' ? t('common.all') : t(`crops.${c}`)}
+                {t(`crops.${c}`)}
               </button>
             ))}
           </div>

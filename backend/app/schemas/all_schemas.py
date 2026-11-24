@@ -8,9 +8,33 @@ class UserProfileUpdate(BaseModel):
     district: Optional[str] = "Dakshina Kannada"
     state: Optional[str] = "Karnataka"
     preferredLanguage: Optional[str] = "en"
+    selected_crop: Optional[str] = None
+    selectedCrop: Optional[str] = None
     primaryCrops: Optional[List[str]] = None
     farmingExperienceYears: Optional[int] = None
     profilePicture: Optional[str] = None
+
+class SignUpRequest(BaseModel):
+    identifier: str = Field(..., description="Email address or 10-digit Indian mobile number")
+    password: str = Field(..., min_length=6, description="Password (minimum 6 characters)")
+    confirm_password: Optional[str] = None
+    full_name: Optional[str] = None
+    taluk: Optional[str] = "Mangaluru"
+
+class LoginRequest(BaseModel):
+    identifier: str = Field(..., description="Email address or 10-digit Indian mobile number")
+    password: str = Field(..., description="User password")
+
+class ForgotPasswordRequest(BaseModel):
+    identifier: str = Field(..., description="Registered email address or mobile number")
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., description="Password reset verification token")
+    new_password: str = Field(..., min_length=6, description="New password")
+    confirm_new_password: Optional[str] = None
+
+class CropPreferenceUpdate(BaseModel):
+    crop: str = Field(..., description="Coconut, Rice, Arecanut, or Cocoa")
 
 class CropRecommendationRequest(BaseModel):
     taluk: str = Field(..., description="Taluk in Dakshina Kannada")

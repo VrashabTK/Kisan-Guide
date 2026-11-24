@@ -26,6 +26,13 @@ from backend.tests.test_api import (
     test_saved_items_authenticated_flow,
     test_profile_update_flow
 )
+from backend.tests.test_auth_crop import (
+    test_identifier_normalization,
+    test_database_registration_and_duplicate_prevention,
+    test_database_authentication_and_rate_limiting,
+    test_global_crop_preference_synchronization,
+    test_api_auth_and_crop_routes
+)
 
 def run_all_tests():
     tests = [
@@ -43,6 +50,11 @@ def run_all_tests():
         ("API: Storage recommendation endpoint", test_storage_recommendation_endpoint),
         ("API: Authenticated saved items flow", test_saved_items_authenticated_flow),
         ("API: Profile update and retrieval flow", test_profile_update_flow),
+        ("Auth: Email & Mobile normalization", test_identifier_normalization),
+        ("Auth: Database registration & duplicate rejection", test_database_registration_and_duplicate_prevention),
+        ("Auth: Database authentication & rate-limiting", test_database_authentication_and_rate_limiting),
+        ("Crops: Global crop preference persistence", test_global_crop_preference_synchronization),
+        ("API: Auth signup/login & crop synchronization", test_api_auth_and_crop_routes),
     ]
 
     passed = 0

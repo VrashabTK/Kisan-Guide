@@ -3,6 +3,7 @@ import logging
 from typing import Optional, Dict, Any
 from fastapi import Header, HTTPException, status, Depends
 from backend.app.core.config import settings
+from backend.app.services.database import decode_access_token
 
 logger = logging.getLogger("kissan_guide.security")
 
@@ -52,6 +53,11 @@ async def get_current_user_claims(
             detail="Empty bearer token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # First, verify against internal JWT tokens
+    jwt_claims = decode_access_token(token)
+    if jwt_claims and "uid" in jwt_claims:
+        return jwt_claims
 
     init_firebase()
 

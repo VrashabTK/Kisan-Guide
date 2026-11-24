@@ -18,14 +18,15 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useCrop } from '../../contexts/CropContext';
 import { api } from '../../services/api';
 
 export const StorageAssistantPage: React.FC = () => {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const { language } = useLanguage();
+  const { selectedCrop, setSelectedCrop } = useCrop();
 
-  const [crop, setCrop] = useState('Arecanut');
   const [harvestDate, setHarvestDate] = useState(
     new Date(Date.now() - 5 * 86400000).toISOString().split('T')[0]
   );
@@ -39,9 +40,22 @@ export const StorageAssistantPage: React.FC = () => {
   const [storageResult, setStorageResult] = useState<any>(null);
   const [aiSuggestions, setAiSuggestions] = useState<any>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [cropSyncNotice, setCropSyncNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const crops = ['Coconut', 'Rice', 'Arecanut', 'Cocoa'];
+
+  const handleCropChange = async (newCrop: string) => {
+    await setSelectedCrop(newCrop, true);
+    setStorageResult(null);
+    setAiSuggestions(null);
+    const cropName = language === 'kn' ? t(`crops.${newCrop}`) : newCrop;
+    const msg = language === 'kn'
+      ? `${cropName} ಅನ್ನು ಸಕ್ರಿಯ ಬೆಳೆಯಾಗಿ ನವೀಕರಿಸಲಾಗಿದೆ.`
+      : `${newCrop} selected as default crop across all sections.`;
+    setCropSyncNotice(msg);
+    setTimeout(() => setCropSyncNotice(null), 3500);
+  };
   const methods = [
     'Ventilated room',
     'Jute bag',
@@ -73,7 +87,7 @@ export const StorageAssistantPage: React.FC = () => {
     try {
       // 1. Fetch scientific storage rule analysis
       const rec = await api.recommendStorage({
-        crop,
+        crop: selectedCrop,
         harvest_date: harvestDate,
         storage_method: storageMethod,
         crop_condition: cropCondition,
@@ -85,7 +99,7 @@ export const StorageAssistantPage: React.FC = () => {
 
       // 2. Fetch AI post-harvest suggestions
       const aiData = await api.getAIStorageAdvice({
-        crop,
+        crop: selectedCrop,
         harvest_date: harvestDate,
         storage_method: storageMethod,
         crop_condition: cropCondition,
@@ -105,10 +119,10 @@ export const StorageAssistantPage: React.FC = () => {
     try {
       await api.saveItem({
         itemType: 'Storage Assistant',
-        itemId: `storage_${crop}_${Date.now()}`,
-        title: `Storage Plan: ${crop} (${storageMethod})`,
+        itemId: `storage_${selectedCrop}_${Date.now()}`,
+        title: `Storage Plan: ${selectedCrop} (${storageMethod})`,
         title_kn: `ಸಂಗ್ರಹಣಾ ಯೋಜನೆ: ${storageResult.crop_kn} (${storageMethod})`,
-        crop,
+        crop: selectedCrop,
         location: taluk,
         content: {
           ...storageResult,
@@ -150,22 +164,29 @@ export const StorageAssistantPage: React.FC = () => {
             {t('storage.formTitle')}
           </h2>
 
+          {cropSyncNotice && (
+            <div className="mb-4 p-3 rounded-xl bg-forest/10 border border-forest/30 text-forest-dark text-xs font-semibold flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-forest shrink-0" />
+              <span>{cropSyncNotice}</span>
+            </div>
+          )}
+
           <form onSubmit={handleGetRecommendations} className="space-y-4">
             
-            {/* Crop Select */}
+            {/* Crop Select (Synchronized with Global Crop State) */}
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">
                 {t('storage.cropLabel')} *
               </label>
               <select
-                value={crop}
-                onChange={(e) => setCrop(e.target.value)}
+                value={selectedCrop}
+                onChange={(e) => handleCropChange(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-300 text-sm bg-white font-semibold text-forest focus:outline-none focus:ring-2 focus:ring-forest"
                 required
               >
                 {crops.map((c) => (
                   <option key={c} value={c}>
-                    {t(`crops.${c}`)}
+                    {t(`crops.${c}`)} ({c})
                   </option>
                 ))}
               </select>

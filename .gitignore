@@ -19,6 +19,11 @@ dist/
 *serviceAccount*.json
 *-firebase-adminsdk-*.json
 
+# SQLite Databases
+*.db
+*.sqlite
+*.sqlite3
+
 # Logs
 *.log
 

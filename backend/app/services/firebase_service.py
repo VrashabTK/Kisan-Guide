@@ -8,6 +8,11 @@ import time
 import logging
 from typing import Dict, Any, List, Optional
 from backend.app.core.config import settings
+from backend.app.services.database import (
+    save_item_db,
+    get_saved_items_db,
+    delete_saved_item_db
+)
 
 logger = logging.getLogger("kissan_guide.firebase")
 
@@ -111,8 +116,13 @@ async def save_item(uid: str, item_data: Dict[str, Any]) -> Dict[str, Any]:
         except Exception as e:
             logger.error(f"Firestore save_item error: {e}")
 
-    _IN_MEMORY_DB["saved_items"][saved_id] = item_data
-    return item_data
+    # Fallback to persistent SQLite database
+    try:
+        return save_item_db(uid, item_data)
+    except Exception as e:
+        logger.debug(f"SQLite save_item error: {e}")
+        _IN_MEMORY_DB["saved_items"][saved_id] = item_data
+        return item_data
 
 async def get_saved_items(uid: str, category: Optional[str] = None) -> List[Dict[str, Any]]:
     client = get_firestore_client()
@@ -126,13 +136,16 @@ async def get_saved_items(uid: str, category: Optional[str] = None) -> List[Dict
         except Exception as e:
             logger.error(f"Firestore get_saved_items error: {e}")
 
-    # Fallback
-    results = [
-        item for item in _IN_MEMORY_DB["saved_items"].values()
-        if item.get("userId") == uid and (not category or item.get("itemType") == category)
-    ]
-    results.sort(key=lambda x: x.get("createdAt", 0), reverse=True)
-    return results
+    # Fallback to persistent SQLite database
+    try:
+        db_items = get_saved_items_db(uid)
+        if category:
+            db_items = [item for item in db_items if item.get("itemType") == category]
+        return db_items
+    except Exception as e:
+        logger.debug(f"SQLite get_saved_items error: {e}")
+
+    # Memory Fallback
 
 async def delete_saved_item(uid: str, saved_item_id: str) -> bool:
     client = get_firestore_client()
@@ -142,6 +155,14 @@ async def delete_saved_item(uid: str, saved_item_id: str) -> bool:
             return True
         except Exception as e:
             logger.error(f"Firestore delete_saved_item error: {e}")
+
+    # SQLite fallback
+    try:
+        deleted = delete_saved_item_db(uid, saved_item_id)
+        if deleted:
+            return True
+    except Exception as e:
+        logger.debug(f"SQLite delete_saved_item error: {e}")
 
     if saved_item_id in _IN_MEMORY_DB["saved_items"]:
         del _IN_MEMORY_DB["saved_items"][saved_item_id]

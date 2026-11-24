@@ -13,6 +13,14 @@ class Settings(BaseModel):
     PORT: int = int(os.getenv("PORT", "8000"))
     HOST: str = os.getenv("HOST", "0.0.0.0")
     
+    # Security & JWT
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "kissan_guide_dk_super_secure_secret_key_2026_production")
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+
+    # SQLite Database
+    SQLITE_DB_PATH: str = os.getenv("SQLITE_DB_PATH", os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "kissan_guide.db"))
+
     # CORS
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",

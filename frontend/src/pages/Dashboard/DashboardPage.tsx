@@ -19,12 +19,14 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useCrop } from '../../contexts/CropContext';
 import { api } from '../../services/api';
 
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const { language } = useLanguage();
+  const { selectedCrop } = useCrop();
 
   const [weather, setWeather] = useState<any>(null);
   const [advisory, setAdvisory] = useState<any>(null);
@@ -77,13 +79,20 @@ export const DashboardPage: React.FC = () => {
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="flex items-center space-x-2 text-leaf-light text-xs sm:text-sm font-semibold tracking-wide">
-              <Calendar className="w-4 h-4" />
-              <span>{todayDateFormatted}</span>
+            <div className="flex flex-wrap items-center gap-2 text-leaf-light text-xs sm:text-sm font-semibold tracking-wide">
+              <span className="flex items-center space-x-1">
+                <Calendar className="w-4 h-4" />
+                <span>{todayDateFormatted}</span>
+              </span>
               <span>•</span>
               <span className="flex items-center space-x-1">
                 <MapPin className="w-3.5 h-3.5" />
                 <span>{t(`taluks.${selectedTaluk}`)}</span>
+              </span>
+              <span>•</span>
+              <span className="flex items-center space-x-1 bg-white/15 px-2.5 py-0.5 rounded-full text-cream border border-white/20">
+                <Sprout className="w-3.5 h-3.5 text-leaf-light" />
+                <span>{language === 'kn' ? t(`crops.${selectedCrop}`) : selectedCrop}</span>
               </span>
             </div>
 
