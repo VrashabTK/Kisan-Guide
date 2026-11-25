@@ -11,6 +11,12 @@ from backend.app.schemas.all_schemas import (
     WeatherAdvisoryRequest,
     SavedItemCreate,
     NotificationPreferencesUpdate,
+    FarmCreate,
+    FarmUpdate,
+    FarmProgressCorrectionRequest,
+    ActivityActionRequest,
+    ObservationCreate,
+    HarvestCreate,
 )
 
 __all__ = [
@@ -26,4 +32,10 @@ __all__ = [
     "WeatherAdvisoryRequest",
     "SavedItemCreate",
     "NotificationPreferencesUpdate",
+    "FarmCreate",
+    "FarmUpdate",
+    "FarmProgressCorrectionRequest",
+    "ActivityActionRequest",
+    "ObservationCreate",
+    "HarvestCreate",
 ]

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Sprout,
+  Tractor,
   CloudSun,
   Warehouse,
   ArrowRight,
@@ -15,11 +16,13 @@ import {
   CheckCircle2,
   MapPin,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Plus
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useCrop } from '../../contexts/CropContext';
+import { useFarm } from '../../contexts/FarmContext';
 import { api } from '../../services/api';
 
 export const DashboardPage: React.FC = () => {
@@ -27,6 +30,7 @@ export const DashboardPage: React.FC = () => {
   const { profile } = useAuth();
   const { language } = useLanguage();
   const { selectedCrop } = useCrop();
+  const { farms, openAddFarmModalWithCrop } = useFarm();
 
   const [weather, setWeather] = useState<any>(null);
   const [advisory, setAdvisory] = useState<any>(null);
@@ -163,6 +167,101 @@ export const DashboardPage: React.FC = () => {
           </Link>
         </div>
       )}
+
+      {/* 2.5. MY FARM & DAILY MONITORING HIGHLIGHT */}
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-emerald-100 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+              <Tractor className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                {language === 'kn' ? 'ನನ್ನ ಜಮೀನು ಮತ್ತು ದೈನಂದಿನ ಕೃಷಿ ನಿರ್ವಹಣೆ' : 'My Farm & Daily Cultivation Tracking'}
+              </h2>
+              <p className="text-xs text-gray-500">
+                {language === 'kn'
+                  ? 'ನಿಮ್ಮ ಜಮೀನಿನ ನೈಜ ಬೆಳೆ ದಿನ, ಪ್ರಸ್ತುತ ಹಂತ ಮತ್ತು ಇಂದಿನ ಕೃಷಿ ಕೆಲಸಗಳ ಸ್ಥಿತಿ'
+                  : 'Track your actual farming days, current growth stage, and complete daily tasks'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => openAddFarmModalWithCrop()}
+              className="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs border border-emerald-200 transition-colors flex items-center space-x-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{language === 'kn' ? 'ಹೊಸ ಜಮೀನು ಸೇರಿಸಿ' : '+ Add Farm'}</span>
+            </button>
+            <Link
+              to="/my-farm"
+              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all flex items-center space-x-1.5"
+            >
+              <span>{language === 'kn' ? 'ಜಮೀನಿಗೆ ಹೋಗಿ' : 'Open My Farm'}</span>
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+
+        {farms.length === 0 ? (
+          <div className="p-6 rounded-2xl bg-emerald-50/50 border border-emerald-100 text-center space-y-2">
+            <p className="text-xs sm:text-sm text-gray-700 font-medium">
+              {language === 'kn'
+                ? 'ನೀವು ಇನ್ನೂ ಯಾವುದೇ ಜಮೀನನ್ನು ನೋಂದಾಯಿಸಿಲ್ಲ. ಇಂದೇ ನಿಮ್ಮ ಕೃಷಿಯನ್ನು ದಾಖಲಿಸಿ ದೈನಂದಿನ ಮಾರ್ಗದರ್ಶನ ಪಡೆಯಿರಿ!'
+                : 'No farms tracked yet. Register your farm to receive intelligent, stage-based daily agricultural recommendations!'}
+            </p>
+            <button
+              onClick={() => openAddFarmModalWithCrop()}
+              className="inline-flex items-center space-x-2 text-xs font-bold text-emerald-700 hover:text-emerald-800 underline"
+            >
+              <span>{language === 'kn' ? 'ಕೃಷಿ ಪ್ರಾರಂಭಿಸಲು ಇಲ್ಲಿ ಕ್ಲಿಕ್ ಮಾಡಿ' : 'Click here to start farming and register your plot'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {farms.map((f) => (
+              <Link
+                key={f.id}
+                to="/my-farm"
+                className="p-4 rounded-2xl bg-gray-50 hover:bg-emerald-50/50 border border-gray-200 hover:border-emerald-300 transition-all flex items-center justify-between group"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xl">
+                      {f.crop === 'Rice' ? '🌾' : f.crop === 'Coconut' ? '🌴' : f.crop === 'Arecanut' ? '🌿' : '🍫'}
+                    </span>
+                    <h4 className="text-sm font-bold text-gray-900 group-hover:text-emerald-800 transition-colors">
+                      {f.name || `${f.crop} Farm`}
+                    </h4>
+                  </div>
+                  <div className="text-xs text-gray-500 flex items-center space-x-2">
+                    <span>{f.taluk}</span>
+                    <span>•</span>
+                    <span className="font-semibold text-emerald-700">
+                      {language === 'kn' ? `ಬೆಳೆ ದಿನ ${f.current_crop_day}` : `Day ${f.current_crop_day}`}
+                    </span>
+                    <span>•</span>
+                    <span>{f.area} {f.area_unit || 'ac'}</span>
+                  </div>
+                  <div className="text-[11px] text-gray-600 line-clamp-1">
+                    {language === 'kn' ? 'ಹಂತ: ' : 'Stage: '}{f.current_stage}
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 block">
+                    {f.today_pending_count || 0} {language === 'kn' ? 'ಉಳಿದಿದೆ' : 'pending'}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all mt-2 ml-auto" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* 3. The Three Primary Feature Cards (Prominent CTA) */}
       <div>

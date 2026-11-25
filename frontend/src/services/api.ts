@@ -173,4 +173,63 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(prefs),
     }),
+
+  // Farm Management & Daily Monitoring
+  createFarm: (payload: {
+    name?: string;
+    crop: string;
+    taluk: string;
+    area: number;
+    area_unit?: string;
+    cultivation_start_date?: string;
+    initial_farming_day?: number;
+    current_stage?: string;
+    variety?: string;
+    cultivation_method?: string;
+    soil_type?: string;
+    water_availability?: string;
+    notes?: string;
+  }) => fetchWithAuth('/farms', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
+  getFarms: () => fetchWithAuth('/farms'),
+  getFarm: (id: string) => fetchWithAuth(`/farms/${id}`),
+  updateFarm: (id: string, updates: any) => fetchWithAuth(`/farms/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+  }),
+  deleteFarm: (id: string) => fetchWithAuth(`/farms/${id}`, { method: 'DELETE' }),
+  correctFarmProgress: (id: string, payload: {
+    new_crop_day?: number;
+    new_stage?: string;
+    reason?: string;
+  }) => fetchWithAuth(`/farms/${id}/progress-correction`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
+  getFarmCorrections: (id: string) => fetchWithAuth(`/farms/${id}/corrections`),
+  getTodayActivities: (farmId: string) => fetchWithAuth(`/farms/${farmId}/activities/today`),
+  completeActivity: (farmId: string, activityId: string) =>
+    fetchWithAuth(`/farms/${farmId}/activities/${activityId}/complete`, { method: 'POST' }),
+  skipActivity: (farmId: string, activityId: string, reason?: string) =>
+    fetchWithAuth(`/farms/${farmId}/activities/${activityId}/skip`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+  getActivitiesHistory: (farmId: string, dateQuery?: string) =>
+    fetchWithAuth(`/farms/${farmId}/activities/history${dateQuery ? `?date=${encodeURIComponent(dateQuery)}` : ''}`),
+  createFarmObservation: (farmId: string, payload: any) =>
+    fetchWithAuth(`/farms/${farmId}/observations`, {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, farm_id: farmId }),
+    }),
+  getFarmObservations: (farmId: string) => fetchWithAuth(`/farms/${farmId}/observations`),
+  createFarmHarvest: (farmId: string, payload: any) =>
+    fetchWithAuth(`/farms/${farmId}/harvests`, {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, farm_id: farmId }),
+    }),
+  getFarmHarvests: (farmId: string) => fetchWithAuth(`/farms/${farmId}/harvests`),
+  getCropStages: (crop: string) => fetchWithAuth(`/farms/stages/${encodeURIComponent(crop)}`),
 };

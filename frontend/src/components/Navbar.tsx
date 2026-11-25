@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Sprout,
+  Tractor,
   CloudSun,
   Warehouse,
   Bookmark,
@@ -27,6 +28,7 @@ export const Navbar: React.FC = () => {
 
   const navLinks = [
     { to: '/', label: t('nav.dashboard'), icon: Sprout },
+    { to: '/my-farm', label: t('nav.myFarm'), icon: Tractor },
     { to: '/crop-recommendation', label: t('nav.cropRecommendation'), icon: Sprout },
     { to: '/weather-assistant', label: t('nav.weatherAssistant'), icon: CloudSun },
     { to: '/storage-assistant', label: t('nav.storageAssistant'), icon: Warehouse },

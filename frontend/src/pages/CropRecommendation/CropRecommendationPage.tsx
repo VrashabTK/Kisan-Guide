@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Sprout,
+  Tractor,
   MapPin,
   Droplets,
   Calendar,
@@ -16,6 +17,8 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useCrop } from '../../contexts/CropContext';
+import { useFarm } from '../../contexts/FarmContext';
+import { SupportedCrop } from '../../types/farm';
 import { api } from '../../services/api';
 
 export const CropRecommendationPage: React.FC = () => {
@@ -23,6 +26,7 @@ export const CropRecommendationPage: React.FC = () => {
   const { profile } = useAuth();
   const { language } = useLanguage();
   const { selectedCrop, setSelectedCrop } = useCrop();
+  const { openAddFarmModalWithCrop } = useFarm();
 
   const [taluk, setTaluk] = useState(profile?.taluk || 'Mangaluru');
   const [waterAvailability, setWaterAvailability] = useState('Moderate');
@@ -345,27 +349,37 @@ export const CropRecommendationPage: React.FC = () => {
                               : (isKn ? 'ಹವಾಮಾನ ಮತ್ತು ಶೇಖರಣಾ ಸಹಾಯಕರಲ್ಲಿ ಬಳಸಲು ಆಯ್ಕೆಮಾಡಿ.' : 'Use this as your active crop across Weather and Storage.')}
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleSelectCrop(primary.crop, cropName)}
-                          className={`w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 shadow-sm ${
-                            selectedCrop === primary.crop
-                              ? 'bg-leaf text-white cursor-default'
-                              : 'bg-forest hover:bg-forest-light text-white'
-                          }`}
-                        >
-                          {selectedCrop === primary.crop ? (
-                            <>
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>{isKn ? 'ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ' : 'Currently Selected'}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Sprout className="w-3.5 h-3.5" />
-                              <span>{isKn ? 'ಸಕ್ರಿಯ ಬೆಳೆಯಾಗಿ ಆಯ್ಕೆಮಾಡಿ' : 'Select as Active Crop'}</span>
-                            </>
-                          )}
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openAddFarmModalWithCrop(primary.crop as SupportedCrop)}
+                            className="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            <Tractor className="w-3.5 h-3.5" />
+                            <span>{isKn ? 'ಕೃಷಿ ಪ್ರಾರಂಭಿಸಿ' : 'Start Farming'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectCrop(primary.crop, cropName)}
+                            className={`w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 shadow-sm ${
+                              selectedCrop === primary.crop
+                                ? 'bg-leaf text-white cursor-default'
+                                : 'bg-forest hover:bg-forest-light text-white'
+                            }`}
+                          >
+                            {selectedCrop === primary.crop ? (
+                              <>
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>{isKn ? 'ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ' : 'Currently Selected'}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sprout className="w-3.5 h-3.5" />
+                                <span>{isKn ? 'ಸಕ್ರಿಯ ಬೆಳೆಯಾಗಿ ಆಯ್ಕೆಮಾಡಿ' : 'Select as Active Crop'}</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                       
                       {/* Plantation Window Highlight */}
@@ -459,6 +473,15 @@ export const CropRecommendationPage: React.FC = () => {
                         </div>
 
                         <div className="flex items-center space-x-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => openAddFarmModalWithCrop(alt.crop as SupportedCrop)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                            title={isKn ? 'ಈ ಬೆಳೆಯನ್ನು ನನ್ನ ಜಮೀನಿನಲ್ಲಿ ಕೃಷಿ ಮಾಡಲು ಪ್ರಾರಂಭಿಸಿ' : 'Start cultivating this crop in My Farm'}
+                          >
+                            <Tractor className="w-3.5 h-3.5" />
+                            <span>{isKn ? 'ಕೃಷಿ ಪ್ರಾರಂಭಿಸಿ' : 'Start Farming'}</span>
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleSelectCrop(alt.crop, isKn ? alt.crop_kn : alt.crop)}

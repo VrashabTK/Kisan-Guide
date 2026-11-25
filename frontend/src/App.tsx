@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { CropProvider } from './contexts/CropContext';
+import { FarmProvider } from './contexts/FarmContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -12,6 +13,7 @@ import { NotificationModal } from './components/NotificationModal';
 // Pages
 import { LoginPage } from './pages/Login/LoginPage';
 import { DashboardPage } from './pages/Dashboard/DashboardPage';
+import { MyFarmPage } from './pages/MyFarm/MyFarmPage';
 import { CropRecommendationPage } from './pages/CropRecommendation/CropRecommendationPage';
 import { WeatherAssistantPage } from './pages/WeatherAssistant/WeatherAssistantPage';
 import { StorageAssistantPage } from './pages/StorageAssistant/StorageAssistantPage';
@@ -35,24 +37,36 @@ export const App: React.FC = () => {
   return (
     <AuthProvider>
       <CropProvider>
-        <LanguageProvider>
-          <NotificationProvider>
-          <Router>
-            <Routes>
-              {/* Public Authentication Route */}
-              <Route path="/login" element={<LoginPage />} />
+        <FarmProvider>
+          <LanguageProvider>
+            <NotificationProvider>
+            <Router>
+              <Routes>
+                {/* Public Authentication Route */}
+                <Route path="/login" element={<LoginPage />} />
 
-              {/* Protected Application Routes */}
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <AppLayout>
-                      <DashboardPage />
-                    </AppLayout>
-                  </ProtectedRoute>
-                }
-              />
+                {/* Protected Application Routes */}
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <DashboardPage />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/my-farm"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <MyFarmPage />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
 
               <Route
                 path="/crop-recommendation"
@@ -115,6 +129,7 @@ export const App: React.FC = () => {
           </Router>
         </NotificationProvider>
       </LanguageProvider>
+      </FarmProvider>
     </CropProvider>
   </AuthProvider>
   );

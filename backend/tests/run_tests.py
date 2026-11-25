@@ -33,6 +33,17 @@ from backend.tests.test_auth_crop import (
     test_global_crop_preference_synchronization,
     test_api_auth_and_crop_routes
 )
+from backend.tests.test_farms import (
+    test_crop_stages_and_stage_consistency,
+    test_farm_creation_and_timeline_day1,
+    test_late_farm_registration_day15,
+    test_farming_progress_correction_audit,
+    test_activity_completion_and_skipping,
+    test_farmer_observations_and_harvest,
+    test_multiple_farms_isolation,
+    test_farm_ownership_security,
+    test_api_farm_endpoints
+)
 
 def run_all_tests():
     tests = [
@@ -55,6 +66,15 @@ def run_all_tests():
         ("Auth: Database authentication & rate-limiting", test_database_authentication_and_rate_limiting),
         ("Crops: Global crop preference persistence", test_global_crop_preference_synchronization),
         ("API: Auth signup/login & crop synchronization", test_api_auth_and_crop_routes),
+        ("Farm: Growth stages definition & consistency warning", test_crop_stages_and_stage_consistency),
+        ("Farm: Standard Day 1 registration & dual timelines", test_farm_creation_and_timeline_day1),
+        ("Farm: Late Day 15 registration & stage-appropriate tasks", test_late_farm_registration_day15),
+        ("Farm: Progress correction & permanent audit log", test_farming_progress_correction_audit),
+        ("Farm: Task completion & skipped reason tracking", test_activity_completion_and_skipping),
+        ("Farm: Daily observations & harvest batch logging", test_farmer_observations_and_harvest),
+        ("Farm: Multiple farms isolation (independent timelines)", test_multiple_farms_isolation),
+        ("Farm: Ownership security (strict cross-farmer isolation)", test_farm_ownership_security),
+        ("API: Farm registration, activities, progress HTTP flow", test_api_farm_endpoints),
     ]
 
     passed = 0

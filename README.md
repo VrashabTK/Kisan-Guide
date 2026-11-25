@@ -5,7 +5,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind_CSS_3.4-38B2AC.svg?logo=tailwind-css)](https://tailwindcss.com)
 [![Vite](https://img.shields.io/badge/Bundler-Vite_5-646CFF.svg?logo=vite)](https://vitejs.dev)
 [![Firebase](https://img.shields.io/badge/Auth_%26_DB-Firebase_Firestore-FFCA28.svg?logo=firebase)](https://firebase.google.com)
-[![Tests](https://img.shields.io/badge/Backend%20Tests-19%20Passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Backend%20Tests-28%20Passing-brightgreen.svg)]()
 [![Validation Tests](https://img.shields.io/badge/Frontend%20Validation-15%20Passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)]()
 
@@ -35,6 +35,19 @@ Covering all **9 Taluks** of Dakshina Kannada:
 ---
 
 ## 🚀 Key Features
+
+### 1. 🌱 My Farm — Personal Farm Management & Intelligent Daily Monitoring (NEW)
+- **Central Cultivation Command Center**: Tracks real farmer plots across Dakshina Kannada.
+- **Dual Independent Timelines**:
+  - **Actual Crop Farming Timeline**: Represents true age/days of cultivation (e.g., Crop Day 15, Day 30).
+  - **KISSAN GUIDE Monitoring Timeline**: Independent counter from registration day (Monitoring Day 1, 2, ...).
+- **Flexible Late Registration**: Farmers can join on Day 15, Day 30, or pick a past start date. The system immediately delivers stage-appropriate Day 15 tasks instead of restarting from Day 1.
+- **Visual Growth-Stage Progression**: Comprehensive stages for Rice (seasonal) and perennial Coconut, Arecanut, and Cocoa.
+- **Daily Farming Tasks**: Dynamic tasks with explanation, priority, rationale, and live weather adaptation (e.g., rain delays spraying/irrigation).
+- **Farmer Confirmations & Skips**: Mark "Done" with timestamps or "Skip" with structured reasons (heavy rainfall, labour shortage, etc.).
+- **Progress Correction Audit Log**: Allows updating farming day or stage with a permanent audit trail.
+- **Daily Field Observations & Harvest Batches**: Record soil moisture, pest symptoms, and harvest quantities directly connected to each farm.
+- **Multi-Farm Support**: Seamlessly manage multiple separate plots (e.g. Rice 2 acres, Arecanut 1 acre) with isolated timelines.
 
 ### 1. Robust Authentication System
 - **Mobile Phone Authentication** with 6-digit SMS OTP verification (Firebase Phone Auth with reCAPTCHA).

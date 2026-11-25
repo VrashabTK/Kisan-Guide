@@ -12,7 +12,8 @@ from backend.app.api.routes import (
     storage,
     ai,
     saved,
-    notifications
+    notifications,
+    farms
 )
 
 # Configure logging
@@ -77,6 +78,7 @@ app.include_router(storage.router, prefix=api_prefix)
 app.include_router(ai.router, prefix=api_prefix)
 app.include_router(saved.router, prefix=api_prefix)
 app.include_router(notifications.router, prefix=api_prefix)
+app.include_router(farms.router, prefix=api_prefix)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

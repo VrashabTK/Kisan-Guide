@@ -5,6 +5,7 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "myFarm": "My Farm",
     "cropRecommendation": "Crop Recommendation",
     "weatherAssistant": "Weather Assistant",
     "storageAssistant": "Storage Assistant",
@@ -272,5 +273,27 @@
     "emptyTitle": "No Saved Items Found",
     "emptySubtitle": "You haven't bookmarked any recommendations yet. Click the bookmark icon on any advisory or recommendation card to save it here for future reference.",
     "remove": "Remove Bookmark"
+  },
+  "farm": {
+    "title": "My Farm",
+    "subtitle": "Personalized farm management, daily task tracking, and growth stage monitoring for Dakshina Kannada.",
+    "addFarm": "Add New Farm",
+    "startFarming": "Start Farming",
+    "cropDay": "Actual Crop Day",
+    "monitoringDay": "Monitoring Day",
+    "todayActivities": "Today's Farming Activities",
+    "markDone": "Mark Done",
+    "skip": "Skip / Postpone",
+    "completed": "Completed",
+    "skipped": "Skipped",
+    "pending": "Pending",
+    "growthStages": "Growth Stages & Lifecycle",
+    "observations": "Daily Field Observations",
+    "history": "Farming History & Calendar",
+    "harvest": "Harvest & Storage Batches",
+    "editProgress": "Edit Farming Day / Update Stage",
+    "stage": "Cultivation Stage",
+    "area": "Farm Area",
+    "taluk": "Taluk"
   }
 }

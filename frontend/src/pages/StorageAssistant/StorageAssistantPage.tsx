@@ -14,11 +14,13 @@ import {
   Thermometer,
   Droplets,
   ArrowRight,
-  Info
+  Info,
+  Tractor
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useCrop } from '../../contexts/CropContext';
+import { useFarm } from '../../contexts/FarmContext';
 import { api } from '../../services/api';
 
 export const StorageAssistantPage: React.FC = () => {
@@ -26,6 +28,7 @@ export const StorageAssistantPage: React.FC = () => {
   const { profile } = useAuth();
   const { language } = useLanguage();
   const { selectedCrop, setSelectedCrop } = useCrop();
+  const { farms, selectedFarm, setSelectedFarmId } = useFarm();
 
   const [harvestDate, setHarvestDate] = useState(
     new Date(Date.now() - 5 * 86400000).toISOString().split('T')[0]
@@ -163,6 +166,33 @@ export const StorageAssistantPage: React.FC = () => {
           <h2 className="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">
             {t('storage.formTitle')}
           </h2>
+
+          {farms && farms.length > 0 && (
+            <div className="mb-4 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-1">
+              <div className="flex items-center space-x-1.5 font-bold">
+                <Tractor className="w-4 h-4 text-emerald-600" />
+                <span>{language === 'kn' ? 'ನನ್ನ ಜಮೀನಿಗೆ ಸಂಪರ್ಕಿಸಿ: ' : 'Connect to My Farm: '}</span>
+              </div>
+              <select
+                value={selectedFarm?.id || ''}
+                onChange={(e) => {
+                  const target = farms.find((f) => f.id === e.target.value);
+                  if (target) {
+                    setSelectedFarmId(target.id);
+                    setTaluk(target.taluk);
+                    handleCropChange(target.crop);
+                  }
+                }}
+                className="w-full px-2.5 py-1.5 rounded-xl border border-emerald-300 bg-white font-semibold text-emerald-800 text-xs mt-1"
+              >
+                {farms.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name || `${f.crop} Farm`} ({f.taluk} • {f.crop})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {cropSyncNotice && (
             <div className="mb-4 p-3 rounded-xl bg-forest/10 border border-forest/30 text-forest-dark text-xs font-semibold flex items-center space-x-2">

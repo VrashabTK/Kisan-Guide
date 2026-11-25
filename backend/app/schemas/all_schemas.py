@@ -81,3 +81,61 @@ class NotificationPreferencesUpdate(BaseModel):
     windEnabled: Optional[bool] = True
     generalAdvisoryEnabled: Optional[bool] = True
     pushEnabled: Optional[bool] = False
+
+# ==================== Farm Management Schemas ====================
+
+class FarmCreate(BaseModel):
+    name: Optional[str] = None
+    crop: str = Field(..., description="Coconut, Rice, Arecanut, or Cocoa")
+    taluk: str = Field(..., description="Taluk in Dakshina Kannada")
+    area: float = Field(..., gt=0, description="Area of farm")
+    area_unit: Optional[str] = "acre"
+    cultivation_start_date: Optional[str] = None
+    initial_farming_day: Optional[int] = Field(1, ge=1)
+    current_stage: Optional[str] = None
+    variety: Optional[str] = None
+    cultivation_method: Optional[str] = None
+    soil_type: Optional[str] = None
+    water_availability: Optional[str] = "Moderate"
+    notes: Optional[str] = None
+    confirmation_started: Optional[bool] = True
+
+class FarmUpdate(BaseModel):
+    name: Optional[str] = None
+    crop: Optional[str] = None
+    taluk: Optional[str] = None
+    area: Optional[float] = None
+    area_unit: Optional[str] = None
+    variety: Optional[str] = None
+    cultivation_method: Optional[str] = None
+    soil_type: Optional[str] = None
+    water_availability: Optional[str] = None
+    notes: Optional[str] = None
+
+class FarmProgressCorrectionRequest(BaseModel):
+    new_crop_day: Optional[int] = Field(None, ge=1)
+    new_stage: Optional[str] = None
+    reason: Optional[str] = None
+
+class ActivityActionRequest(BaseModel):
+    reason: Optional[str] = None
+
+class ObservationCreate(BaseModel):
+    farm_id: str
+    calendar_date: Optional[str] = None
+    field_condition: Optional[str] = None
+    soil_moisture: Optional[str] = None
+    water_availability: Optional[str] = None
+    crop_appearance: Optional[str] = None
+    pest_symptoms: Optional[str] = None
+    rainfall_notes: Optional[str] = None
+    additional_notes: Optional[str] = None
+    photo_url: Optional[str] = None
+
+class HarvestCreate(BaseModel):
+    farm_id: str
+    harvest_date: str
+    quantity_kg: float = Field(..., gt=0)
+    quality_grade: Optional[str] = "Grade A"
+    storage_method: Optional[str] = None
+    notes: Optional[str] = None

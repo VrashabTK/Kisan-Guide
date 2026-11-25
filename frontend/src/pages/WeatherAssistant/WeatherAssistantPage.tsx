@@ -16,11 +16,13 @@ import {
   Sparkles,
   ShieldAlert,
   Clock,
-  Sprout
+  Sprout,
+  Tractor
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useCrop, SupportedCrop } from '../../contexts/CropContext';
+import { useFarm } from '../../contexts/FarmContext';
 import { api } from '../../services/api';
 
 export const WeatherAssistantPage: React.FC = () => {
@@ -28,6 +30,7 @@ export const WeatherAssistantPage: React.FC = () => {
   const { profile } = useAuth();
   const { language } = useLanguage();
   const { selectedCrop, setSelectedCrop } = useCrop();
+  const { farms, selectedFarm, setSelectedFarmId } = useFarm();
 
   const [taluk, setTaluk] = useState(profile?.taluk || 'Mangaluru');
   const [weatherData, setWeatherData] = useState<any>(null);
@@ -164,6 +167,44 @@ export const WeatherAssistantPage: React.FC = () => {
       {savedNotice && (
         <div className="p-3 bg-green-50 border border-green-200 text-green-700 text-xs rounded-xl font-medium">
           {savedNotice}
+        </div>
+      )}
+
+      {/* Farm Linkage Selector (If Farmer Has Active Farms) */}
+      {farms && farms.length > 0 && (
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center space-x-2">
+            <Tractor className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="font-bold text-emerald-900">
+              {language === 'kn' ? 'ನನ್ನ ಜಮೀನಿಗೆ ಲಿಂಕ್ ಮಾಡಿ: ' : 'Link with My Farm: '}
+            </span>
+            <select
+              value={selectedFarm?.id || ''}
+              onChange={(e) => {
+                const target = farms.find((f) => f.id === e.target.value);
+                if (target) {
+                  setSelectedFarmId(target.id);
+                  setTaluk(target.taluk);
+                  handleCropChange(target.crop);
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-white font-bold text-emerald-800"
+            >
+              {farms.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name || `${f.crop} Farm`} ({f.taluk} • {f.crop})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedFarm && (
+            <div className="text-emerald-700 font-medium">
+              <span>{language === 'kn' ? 'ಬೆಳೆ ದಿನ: ' : 'Crop Day: '}<strong>{selectedFarm.current_crop_day}</strong></span>
+              <span className="mx-2">•</span>
+              <span>{language === 'kn' ? 'ಹಂತ: ' : 'Stage: '}<strong>{selectedFarm.current_stage}</strong></span>
+            </div>
+          )}
         </div>
       )}
 

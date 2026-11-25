@@ -109,10 +109,117 @@ def init_db():
             );
             """)
 
+            # Farms table
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS farms (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                name TEXT,
+                crop TEXT NOT NULL,
+                taluk TEXT NOT NULL,
+                area REAL NOT NULL,
+                area_unit TEXT DEFAULT 'acre',
+                cultivation_start_date TEXT,
+                initial_farming_day INTEGER DEFAULT 1,
+                monitoring_start_date TEXT NOT NULL,
+                current_stage TEXT NOT NULL,
+                variety TEXT,
+                cultivation_method TEXT,
+                soil_type TEXT,
+                water_availability TEXT DEFAULT 'Moderate',
+                notes TEXT,
+                is_active INTEGER DEFAULT 1,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            );
+            """)
+
+            # Farm activities table
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS farm_activities (
+                id TEXT PRIMARY KEY,
+                farm_id TEXT NOT NULL,
+                calendar_date TEXT NOT NULL,
+                crop_day INTEGER NOT NULL,
+                monitoring_day INTEGER NOT NULL,
+                stage TEXT NOT NULL,
+                title_en TEXT NOT NULL,
+                title_kn TEXT NOT NULL,
+                description_en TEXT NOT NULL,
+                description_kn TEXT NOT NULL,
+                why_necessary_en TEXT NOT NULL,
+                why_necessary_kn TEXT NOT NULL,
+                timing_conditions_en TEXT,
+                timing_conditions_kn TEXT,
+                priority TEXT DEFAULT 'medium',
+                weather_influence_en TEXT,
+                weather_influence_kn TEXT,
+                status TEXT DEFAULT 'pending',
+                completed_at INTEGER,
+                skipped_at INTEGER,
+                skip_reason TEXT,
+                is_recurring INTEGER DEFAULT 0,
+                created_at INTEGER NOT NULL
+            );
+            """)
+
+            # Farm observations table
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS farm_observations (
+                id TEXT PRIMARY KEY,
+                farm_id TEXT NOT NULL,
+                calendar_date TEXT NOT NULL,
+                crop_day INTEGER NOT NULL,
+                monitoring_day INTEGER NOT NULL,
+                field_condition TEXT,
+                soil_moisture TEXT,
+                water_availability TEXT,
+                crop_appearance TEXT,
+                pest_symptoms TEXT,
+                rainfall_notes TEXT,
+                additional_notes TEXT,
+                photo_url TEXT,
+                created_at INTEGER NOT NULL
+            );
+            """)
+
+            # Farm progress corrections table
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS farm_corrections (
+                id TEXT PRIMARY KEY,
+                farm_id TEXT NOT NULL,
+                prev_crop_day INTEGER,
+                new_crop_day INTEGER,
+                prev_stage TEXT,
+                new_stage TEXT,
+                reason TEXT,
+                created_at INTEGER NOT NULL
+            );
+            """)
+
+            # Farm harvests table
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS farm_harvests (
+                id TEXT PRIMARY KEY,
+                farm_id TEXT NOT NULL,
+                harvest_date TEXT NOT NULL,
+                quantity_kg REAL NOT NULL,
+                quality_grade TEXT,
+                storage_method TEXT,
+                notes TEXT,
+                created_at INTEGER NOT NULL
+            );
+            """)
+
             # Indexes for performance
             conn.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_saved_user ON saved_items(user_id);")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_farms_user ON farms(user_id);")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_activities_farm ON farm_activities(farm_id);")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_activities_date ON farm_activities(farm_id, calendar_date);")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_obs_farm ON farm_observations(farm_id);")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_harvest_farm ON farm_harvests(farm_id);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_storage_user ON storage_records(user_id);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_resets_token ON password_resets(token);")
             
@@ -616,6 +723,327 @@ def delete_saved_item_db(user_id: str, item_id: str) -> bool:
         with conn:
             cur = conn.execute("DELETE FROM saved_items WHERE (id = ? OR item_id = ?) AND user_id = ?;", (item_id, item_id, user_id))
             return cur.rowcount > 0
+    finally:
+        conn.close()
+
+# ==================== Farm Management Database Operations ====================
+
+def create_farm_db(farm_data: Dict[str, Any]) -> Dict[str, Any]:
+    farm_id = farm_data.get("id") or f"farm_{uuid.uuid4().hex[:12]}"
+    now = int(time.time())
+    conn = get_db_connection()
+    try:
+        with conn:
+            conn.execute("""
+            INSERT INTO farms (
+                id, user_id, name, crop, taluk, area, area_unit,
+                cultivation_start_date, initial_farming_day, monitoring_start_date,
+                current_stage, variety, cultivation_method, soil_type,
+                water_availability, notes, is_active, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            """, (
+                farm_id,
+                farm_data["user_id"],
+                farm_data.get("name") or f"{farm_data['crop']} Farm ({farm_data['taluk']})",
+                farm_data["crop"],
+                farm_data["taluk"],
+                float(farm_data["area"]),
+                farm_data.get("area_unit", "acre"),
+                farm_data.get("cultivation_start_date"),
+                int(farm_data.get("initial_farming_day", 1)),
+                farm_data["monitoring_start_date"],
+                farm_data["current_stage"],
+                farm_data.get("variety"),
+                farm_data.get("cultivation_method"),
+                farm_data.get("soil_type"),
+                farm_data.get("water_availability", "Moderate"),
+                farm_data.get("notes"),
+                1,
+                now,
+                now
+            ))
+        return get_farm_by_id_db(farm_id, farm_data["user_id"])
+    finally:
+        conn.close()
+
+def get_farms_by_user_db(user_id: str) -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM farms WHERE user_id = ? AND is_active = 1 ORDER BY created_at DESC;",
+            (user_id,)
+        )
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+def get_farm_by_id_db(farm_id: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    conn = get_db_connection()
+    try:
+        if user_id:
+            cur = conn.execute("SELECT * FROM farms WHERE id = ? AND user_id = ?;", (farm_id, user_id))
+        else:
+            cur = conn.execute("SELECT * FROM farms WHERE id = ?;", (farm_id,))
+        row = cur.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+def update_farm_db(farm_id: str, user_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    conn = get_db_connection()
+    now = int(time.time())
+    allowed_keys = {
+        "name", "crop", "taluk", "area", "area_unit", "cultivation_start_date",
+        "initial_farming_day", "current_stage", "variety", "cultivation_method",
+        "soil_type", "water_availability", "notes"
+    }
+    filtered = {k: v for k, v in updates.items() if k in allowed_keys and v is not None}
+    if not filtered:
+        return get_farm_by_id_db(farm_id, user_id)
+    
+    set_clauses = [f"{k} = ?" for k in filtered.keys()]
+    set_clauses.append("updated_at = ?")
+    values = list(filtered.values()) + [now, farm_id, user_id]
+
+    try:
+        with conn:
+            conn.execute(
+                f"UPDATE farms SET {', '.join(set_clauses)} WHERE id = ? AND user_id = ?;",
+                values
+            )
+        return get_farm_by_id_db(farm_id, user_id)
+    finally:
+        conn.close()
+
+def delete_farm_db(farm_id: str, user_id: str) -> bool:
+    conn = get_db_connection()
+    try:
+        with conn:
+            cur = conn.execute(
+                "UPDATE farms SET is_active = 0, updated_at = ? WHERE id = ? AND user_id = ?;",
+                (int(time.time()), farm_id, user_id)
+            )
+            return cur.rowcount > 0
+    finally:
+        conn.close()
+
+def create_farm_correction_db(correction: Dict[str, Any]) -> Dict[str, Any]:
+    cid = correction.get("id") or f"corr_{uuid.uuid4().hex[:12]}"
+    now = int(time.time())
+    conn = get_db_connection()
+    try:
+        with conn:
+            conn.execute("""
+            INSERT INTO farm_corrections (
+                id, farm_id, prev_crop_day, new_crop_day, prev_stage, new_stage, reason, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+            """, (
+                cid,
+                correction["farm_id"],
+                correction.get("prev_crop_day"),
+                correction.get("new_crop_day"),
+                correction.get("prev_stage"),
+                correction.get("new_stage"),
+                correction.get("reason"),
+                now
+            ))
+            # Also update farm current_stage / initial_farming_day if provided
+            farm_updates = {}
+            if "new_stage" in correction and correction["new_stage"]:
+                farm_updates["current_stage"] = correction["new_stage"]
+            if "new_crop_day" in correction and correction["new_crop_day"]:
+                farm_updates["initial_farming_day"] = correction["new_crop_day"]
+                # Reset monitoring_start_date to today so day calculation stays aligned
+                from datetime import date
+                farm_updates["monitoring_start_date"] = date.today().isoformat()
+            if farm_updates:
+                set_clauses = [f"{k} = ?" for k in farm_updates.keys()]
+                set_clauses.append("updated_at = ?")
+                vals = list(farm_updates.values()) + [now, correction["farm_id"]]
+                conn.execute(f"UPDATE farms SET {', '.join(set_clauses)} WHERE id = ?;", vals)
+
+        return {**correction, "id": cid, "created_at": now}
+    finally:
+        conn.close()
+
+def get_farm_corrections_db(farm_id: str) -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM farm_corrections WHERE farm_id = ? ORDER BY created_at DESC;",
+            (farm_id,)
+        )
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+def save_farm_activities_db(activities: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    saved = []
+    now = int(time.time())
+    try:
+        with conn:
+            for act in activities:
+                aid = act.get("id") or f"act_{uuid.uuid4().hex[:12]}"
+                conn.execute("""
+                INSERT OR REPLACE INTO farm_activities (
+                    id, farm_id, calendar_date, crop_day, monitoring_day, stage,
+                    title_en, title_kn, description_en, description_kn,
+                    why_necessary_en, why_necessary_kn, timing_conditions_en, timing_conditions_kn,
+                    priority, weather_influence_en, weather_influence_kn,
+                    status, completed_at, skipped_at, skip_reason, is_recurring, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """, (
+                    aid,
+                    act["farm_id"],
+                    act["calendar_date"],
+                    int(act["crop_day"]),
+                    int(act["monitoring_day"]),
+                    act["stage"],
+                    act["title_en"],
+                    act["title_kn"],
+                    act["description_en"],
+                    act["description_kn"],
+                    act["why_necessary_en"],
+                    act["why_necessary_kn"],
+                    act.get("timing_conditions_en"),
+                    act.get("timing_conditions_kn"),
+                    act.get("priority", "medium"),
+                    act.get("weather_influence_en"),
+                    act.get("weather_influence_kn"),
+                    act.get("status", "pending"),
+                    act.get("completed_at"),
+                    act.get("skipped_at"),
+                    act.get("skip_reason"),
+                    1 if act.get("is_recurring") else 0,
+                    act.get("created_at", now)
+                ))
+                saved.append({**act, "id": aid})
+        return saved
+    finally:
+        conn.close()
+
+def get_farm_activities_for_date_db(farm_id: str, calendar_date: str) -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM farm_activities WHERE farm_id = ? AND calendar_date = ? ORDER BY created_at ASC;",
+            (farm_id, calendar_date)
+        )
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+def get_farm_activities_history_db(farm_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM farm_activities WHERE farm_id = ? ORDER BY calendar_date DESC, created_at DESC LIMIT ?;",
+            (farm_id, limit)
+        )
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+def update_farm_activity_status_db(
+    activity_id: str,
+    farm_id: str,
+    status: str,
+    skip_reason: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    conn = get_db_connection()
+    now = int(time.time())
+    completed_at = now if status == "completed" else None
+    skipped_at = now if status == "skipped" else None
+    try:
+        with conn:
+            conn.execute("""
+            UPDATE farm_activities
+            SET status = ?, completed_at = ?, skipped_at = ?, skip_reason = ?
+            WHERE id = ? AND farm_id = ?;
+            """, (status, completed_at, skipped_at, skip_reason, activity_id, farm_id))
+            cur = conn.execute("SELECT * FROM farm_activities WHERE id = ?;", (activity_id,))
+            row = cur.fetchone()
+            return dict(row) if row else None
+    finally:
+        conn.close()
+
+def create_farm_observation_db(obs_data: Dict[str, Any]) -> Dict[str, Any]:
+    oid = obs_data.get("id") or f"obs_{uuid.uuid4().hex[:12]}"
+    now = int(time.time())
+    conn = get_db_connection()
+    try:
+        with conn:
+            conn.execute("""
+            INSERT INTO farm_observations (
+                id, farm_id, calendar_date, crop_day, monitoring_day,
+                field_condition, soil_moisture, water_availability,
+                crop_appearance, pest_symptoms, rainfall_notes,
+                additional_notes, photo_url, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            """, (
+                oid,
+                obs_data["farm_id"],
+                obs_data["calendar_date"],
+                int(obs_data["crop_day"]),
+                int(obs_data["monitoring_day"]),
+                obs_data.get("field_condition"),
+                obs_data.get("soil_moisture"),
+                obs_data.get("water_availability"),
+                obs_data.get("crop_appearance"),
+                obs_data.get("pest_symptoms"),
+                obs_data.get("rainfall_notes"),
+                obs_data.get("additional_notes"),
+                obs_data.get("photo_url"),
+                now
+            ))
+        return {**obs_data, "id": oid, "created_at": now}
+    finally:
+        conn.close()
+
+def get_farm_observations_db(farm_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM farm_observations WHERE farm_id = ? ORDER BY calendar_date DESC, created_at DESC LIMIT ?;",
+            (farm_id, limit)
+        )
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+def create_farm_harvest_db(harvest_data: Dict[str, Any]) -> Dict[str, Any]:
+    hid = harvest_data.get("id") or f"harv_{uuid.uuid4().hex[:12]}"
+    now = int(time.time())
+    conn = get_db_connection()
+    try:
+        with conn:
+            conn.execute("""
+            INSERT INTO farm_harvests (
+                id, farm_id, harvest_date, quantity_kg, quality_grade, storage_method, notes, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+            """, (
+                hid,
+                harvest_data["farm_id"],
+                harvest_data["harvest_date"],
+                float(harvest_data["quantity_kg"]),
+                harvest_data.get("quality_grade", "Grade A"),
+                harvest_data.get("storage_method"),
+                harvest_data.get("notes"),
+                now
+            ))
+        return {**harvest_data, "id": hid, "created_at": now}
+    finally:
+        conn.close()
+
+def get_farm_harvests_db(farm_id: str) -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM farm_harvests WHERE farm_id = ? ORDER BY harvest_date DESC, created_at DESC;",
+            (farm_id,)
+        )
+        return [dict(row) for row in cur.fetchall()]
     finally:
         conn.close()
 
